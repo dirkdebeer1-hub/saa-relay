@@ -543,20 +543,21 @@ function urlBase64ToUint8Array(base64String) {
 
 async function subscribeToPush(reg) {
   try {
-    // Check existing subscription
+    // Unsubscribe old subscription if VAPID key changed
     let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
-      });
-      console.log('Push subscribed:', sub.endpoint);
-    } else {
-      console.log('Push already subscribed:', sub.endpoint);
+    if (sub) {
+      await sub.unsubscribe();
+      console.log('Unsubscribed old push subscription');
     }
+    // Subscribe with current VAPID key
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+    });
+    console.log('Push subscribed:', sub.endpoint);
     // Save subscription to Supabase
     const keys = sub.toJSON().keys;
-    await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
+    const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
       method: 'POST',
       headers: {
         ...headers,
@@ -569,9 +570,9 @@ async function subscribeToPush(reg) {
         auth: keys.auth
       })
     });
-    console.log('Push subscription saved to Supabase');
+    console.log('Push save response:', saveRes.status, await saveRes.text());
   } catch (e) {
-    console.log('Push subscription failed:', e);
+    console.log('Push subscription failed:', e.message || e);
   }
 }
 
