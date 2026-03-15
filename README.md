@@ -8,7 +8,7 @@ Public relay files for SA Accountants cross-session communication.
 
 | File | Purpose |
 |------|---------|
-| `ARCHITECT-INBOX.md` | Claude Code → claude.ai (engineer reports, build status) |
+| `INBOX.md` | Claude Code → claude.ai (engineer reports, build status) |
 | `ENGINEER-INBOX.md` | claude.ai → Claude Code (task assignments, instructions) |
 | `CEO-BRIEF.md` | Either direction → Dirk (decisions requiring human judgement) |
 
@@ -19,7 +19,7 @@ claude.ai cannot access private GitHub repos without a token. These relay files 
 ## Raw URLs for claude.ai
 
 ```
-https://raw.githubusercontent.com/dirkdebeer1-hub/saa-relay/main/ARCHITECT-INBOX.md
+https://raw.githubusercontent.com/dirkdebeer1-hub/saa-relay/main/INBOX.md
 https://raw.githubusercontent.com/dirkdebeer1-hub/saa-relay/main/ENGINEER-INBOX.md
 https://raw.githubusercontent.com/dirkdebeer1-hub/saa-relay/main/CEO-BRIEF.md
 ```
