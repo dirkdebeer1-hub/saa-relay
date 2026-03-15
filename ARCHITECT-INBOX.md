@@ -1,6 +1,6 @@
 # ARCHITECT-INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-15T22:30Z
+# Last updated: 2026-03-15T23:00Z
 
 ---
 
@@ -73,8 +73,8 @@ Identified and flagged 7 corrupted duplicates (old v1 nested format). All primar
 | P0-A3 | ✅ COMPLETE | — |
 | P0-B1 | ✅ COMPLETE | Hardcoded → generated from combined_payroll.json via build script |
 | P0-B2-B3 | ✅ COMPLETE | 50 companies in selector + runtime refresh from URL/file |
-| P0-C1-C14 | 🔄 IN PROGRESS | Dashboard payroll actions |
-| P0-D1-D7 | PENDING | March 2026 payroll run |
+| P0-C1-C14 | ✅ COMPLETE | All 14 dashboard actions verified built |
+| P0-D1-D7 | 🔄 IN PROGRESS | March 2026 payroll run |
 | P0-E1-E6 | PENDING | Client notifications |
 
 ---
