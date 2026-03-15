@@ -164,9 +164,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- FIXED INPUT BAR -->
-<audio id="alertSound" preload="auto">
-  <source src="https://www.soundjay.com/buttons/sounds/button-09a.mp3" type="audio/mpeg">
-</audio>
 
 <div class="task-input-area">
   <input type="text" id="taskInput" placeholder="Tell Claude what to do..." onkeydown="if(event.key==='Enter')sendTask()">
@@ -488,33 +485,47 @@ function refreshAll() {
   loadTasks();
 }
 
-// ── ALERT SOUND + VIBRATION + BROWSER NOTIFICATIONS ─────────
+// ── ALERT: VIBRATE + VISUAL FLASH + TITLE FLASH ─────────────
 
-// Request browser notification permission on load
-if ('Notification' in window && Notification.permission === 'default') {
-  Notification.requestPermission();
-}
+let titleFlashInterval = null;
+const originalTitle = document.title;
 
 function playAlert(title, message) {
-  // 1. Sound — simple audio element (works on Android Chrome)
-  try {
-    const snd = document.getElementById('alertSound');
-    snd.currentTime = 0;
-    snd.play().catch(() => {});
-  } catch(e) {}
+  // 1. VIBRATE — most reliable on Android
+  try { if (navigator.vibrate) navigator.vibrate([300, 200, 300, 200, 300]); } catch(e) {}
 
-  // 2. Vibrate
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-
-  // 3. Browser notification (shows even when screen is off/locked)
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification(title || 'SAA Alert', {
-        body: message || 'New update on your dashboard',
-        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📋</text></svg>'
-      });
-    } catch(e) {}
+  // 2. VISUAL FLASH — flash the header red/navy to catch attention
+  const header = document.querySelector('.header');
+  if (header) {
+    let flashes = 0;
+    const flashInterval = setInterval(() => {
+      header.style.background = flashes % 2 === 0 ? 'var(--red)' : '';
+      flashes++;
+      if (flashes >= 6) {
+        clearInterval(flashInterval);
+        header.style.background = '';
+      }
+    }, 300);
   }
+
+  // 3. TITLE FLASH — alternates browser tab title to grab attention
+  if (titleFlashInterval) clearInterval(titleFlashInterval);
+  let count = 0;
+  titleFlashInterval = setInterval(() => {
+    document.title = count % 2 === 0 ? '🔴 ' + (title || 'NEW ALERT') : originalTitle;
+    count++;
+    if (count >= 20) { // Flash for ~10 seconds
+      clearInterval(titleFlashInterval);
+      titleFlashInterval = null;
+      document.title = originalTitle;
+    }
+  }, 500);
+
+  // 4. SCROLL TO TOP — make sure alerts tab is visible
+  window.scrollTo(0, 0);
+
+  // 5. LOG — so we can debug
+  console.log('ALERT FIRED:', title, message, new Date().toISOString());
 }
 
 // ── CONNECTION STATE ────────────────────────────────────────
