@@ -103,6 +103,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="tab" data-panel="command" onclick="switchTab(this)">Command</div>
 </div>
 
+<!-- DEBUG BAR — visible on screen -->
+<div id="debug-bar" style="background:#222;color:#0f0;font-family:monospace;font-size:11px;padding:8px 12px;white-space:pre-wrap;">DEBUG: loading...</div>
+
 <!-- NOTIFICATIONS PANEL -->
 <div class="panel active" id="panel-notifications">
   <div class="content">
@@ -655,28 +658,40 @@ function connectRealtime() {
 let lastNotifCount = 0;
 let lastRecCount = 0;
 
+function dbg(msg) {
+  const bar = document.getElementById('debug-bar');
+  if (bar) bar.textContent = msg;
+  console.log(msg);
+}
+
 async function pollWithAlerts() {
-  // Track counts before refresh to detect new items
   const prevNotif = lastNotifCount;
   const prevRec = lastRecCount;
+  dbg('POLL: prev=' + prevNotif + ' | fetching...');
 
   await refreshAll();
 
-  // Check if new items appeared (for polling mode alerts)
   try {
-    const nRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications?is_read=eq.false&select=id`, { headers });
+    const nRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications?is_read=eq.false&is_dismissed=eq.false&select=id`, { headers });
     const nData = await nRes.json();
+    const nowCount = Array.isArray(nData) ? nData.length : 0;
+
     const rRes = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?status=eq.pending&select=id`, { headers });
     const rData = await rRes.json();
+    const nowRec = Array.isArray(rData) ? rData.length : 0;
 
-    if (nData.length > prevNotif) {
+    dbg('POLL: prev=' + prevNotif + ' now=' + nowCount + ' rec_prev=' + prevRec + ' rec_now=' + nowRec + ' | ' + new Date().toLocaleTimeString());
+
+    if (nowCount > prevNotif) {
+      dbg('🔴 ALERT FIRING — notif ' + prevNotif + '→' + nowCount);
       playAlert('New Notification', 'You have new alerts');
-    } else if (rData.length > prevRec) {
+    } else if (nowRec > prevRec) {
+      dbg('🔴 ALERT FIRING — rec ' + prevRec + '→' + nowRec);
       playAlert('New Recommendation', 'Needs your approval');
     }
-    lastNotifCount = nData.length;
-    lastRecCount = rData.length;
-  } catch(e) { /* polling count check failed */ }
+    lastNotifCount = nowCount;
+    lastRecCount = nowRec;
+  } catch(e) { dbg('POLL ERROR: ' + e.message); }
 }
 
 // ── INIT ────────────────────────────────────────────────────
@@ -692,8 +707,8 @@ async function init() {
     const rRes = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?status=eq.pending&select=id`, { headers });
     const rData = await rRes.json();
     lastRecCount = Array.isArray(rData) ? rData.length : 0;
-    console.log('Baseline set:', lastNotifCount, 'notifications,', lastRecCount, 'recommendations');
-  } catch(e) { console.log('Baseline count failed:', e); }
+    dbg('BASELINE: ' + lastNotifCount + ' notifs, ' + lastRecCount + ' recs | ' + new Date().toLocaleTimeString());
+  } catch(e) { dbg('BASELINE ERROR: ' + e.message); }
   // Try realtime
   connectRealtime();
   // Always poll every 10 seconds as fallback
