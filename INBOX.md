@@ -1,21 +1,28 @@
 # INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-16T01:25Z
+# Last updated: 2026-03-16T01:50Z
 
 ---
 
-## ENGINEER REPORT — 2026-03-16 (CEO DASHBOARD v4 — DEPLOYMENT VERIFIED)
+## ENGINEER REPORT — 2026-03-16 (CEO DASHBOARD v4 — ALL ALERTS CONFIRMED ✓)
 
-### MILESTONE: CEO Dashboard v4 — GitHub Pages Deployment Confirmed
+### MILESTONE: CEO Dashboard v4 — Fully Operational
 
-Root cause of all "alerts not working" reports: **GitHub Pages was caching old v3 code.** Dirk never loaded the updated JavaScript despite multiple pushes.
+**Two root causes found and fixed:**
+1. **GitHub Pages caching** — Dirk was seeing old v3 code. Fixed with version bump + curl verification.
+2. **Supabase RLS blocking reads** — `notifications` table required `auth.uid() = user_id` for SELECT. Anon key returned 0 rows. Fixed RLS to allow anon full access (same as `recommendations` table).
 
-**Fix:** Version bumped to v4 with visible header changes (lighter blue gradient, v4 badge). Verified deployment with `curl` — **v4 confirmed LIVE on GitHub Pages.**
+**All three alert channels confirmed working by Dirk:**
+- **Red banner** — persistent pulsing banner at top of screen, stays until tapped
+- **Vibration** — 300-200-300-200-300ms pattern on Android Chrome
+- **Sound** — 3 × 880Hz beeps via Web Audio API (unlocked on first tap)
 
 **What v4 has:**
 - 10s polling fallback with 🟢 Live / 🟡 Polling indicator
-- Vibration alerts (300ms pattern) on new notifications
-- Visual header flash (red/navy alternation) on new alerts
+- Persistent red alert banner (tap to dismiss)
+- 3-beep sound alert via Web Audio API
+- Vibration alerts on new notifications
+- Visual header flash (red/navy alternation)
 - Title flash ("🔴 NEW ALERT") for backgrounded tabs
 - Auto-scroll to top on alert
 - Sound enabled by default (vibration + visual are the reliable channels on mobile)

@@ -22,3 +22,7 @@
 | 12 | 01:15 | Dirk | Sound not working on Android Chrome — tried Web Audio API, external audio file, browser Notifications API. All failed. Likely root cause: GitHub Pages caching old v3 code. |
 | 13 | 01:20 | Dirk | Force version bump to v4 with visible header change. Verify deployment with curl before testing alerts. |
 | 14 | 01:25 | Claude Code | Dashboard v4: version bump, header gradient changed (#2a6496→#1a3a5c), v4 badge visible. Pushed. Curl confirmed v4 LIVE on GitHub Pages. Inserted test notification via Supabase SQL. |
+| 15 | 01:35 | Claude Code | ROOT CAUSE FOUND: RLS on notifications table required auth.uid()=user_id — anon key returned 0 rows. Fixed RLS to allow anon full access. Dashboard immediately showed 8 notifications. |
+| 16 | 01:40 | Claude Code | Added debug bar, confirmed polling works (prev=8, now=9 triggers alert). Added Web Audio API 3-beep sound. |
+| 17 | 01:45 | Dirk | Confirmed: banner ✓, vibration ✓, sound ✓. All three alert channels working. |
+| 18 | 01:50 | Claude Code | Cleanup: removed debug bar, deleted test notifications, pushed final v4. |
