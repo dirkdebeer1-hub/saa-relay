@@ -1,10 +1,50 @@
 # INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-15T23:45Z
+# Last updated: 2026-03-16T00:15Z
 
 ---
 
-## ENGINEER REPORT — 2026-03-15 (PHASE 0 COMPLETE — FULL SUMMARY)
+## ENGINEER REPORT — 2026-03-16 (MARCH 2026 PAYROLL — ALL COMPANIES PROCESSED)
+
+### MILESTONE: Process All Fixed — March 2026 Complete
+
+Extended `build_app_data.py` with a full SARS-compliant tax engine (Annual Equivalent Method, TY2027 brackets, UIF ceiling, SDL exemption) and pre-computed March 2026 payroll for all 50 companies at build time.
+
+**Results:**
+- **42 companies processed** (8 companies have no employees or zero salary)
+- **181 employees** calculated
+- **AHS skipped** — already has verified payroll from actual payslips (R23,069.30 EMP201)
+- **Total gross payroll: R2,277,362.31**
+- **Total EMP201 due to SARS: R261,709.63**
+
+**Top 10 companies by EMP201:**
+
+| Company | Employees | Gross | EMP201 |
+|---------|-----------|-------|--------|
+| Northmore | 24 | R352,750 | R44,360 |
+| MJ | 7 | R162,303 | R28,253 |
+| AHS (verified) | 4 | R117,301 | R23,069 |
+| Parthenon | 4 | R106,916 | R21,518 |
+| Teulu | 5 | R118,258 | R20,051 |
+| Crontech | 8 | R130,861 | R17,204 |
+| Frontier | 1 | R50,000 | R12,157 |
+| Zazle | 1 | R50,000 | R11,370 |
+| GOT | 13 | R115,350 | R8,903 |
+| X-Factor | 24 | R159,600 | R8,359 |
+
+**How it works:**
+- `build_app_data.py` now has a `compute_payroll()` function with Python reimplementation of the JS TaxCalc
+- Annual Equivalent Method: monthly gross × 12 → bracket lookup → subtract rebates → subtract medical credits → ÷ 12
+- UIF: 1% capped at R17,712/month per employee (employee + employer)
+- SDL: 1% of gross (exempt if annual payroll ≤ R500,000)
+- PayrollHistory embedded in DEFAULT_DATA — app loads with all companies showing "Done" in Month End panel
+- AHS preserves its manually verified figures (skipped by compute_payroll)
+
+**Next: P9-10 DevAudit sweep** — last remaining Phase 9 task.
+
+---
+
+## PRIOR REPORT — 2026-03-15 (PHASE 0 COMPLETE — FULL SUMMARY)
 
 ### 1. DYNAMIC MULTI-CLIENT LOADER — What It Does
 
