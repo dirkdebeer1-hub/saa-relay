@@ -164,6 +164,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- FIXED INPUT BAR -->
+<audio id="alertSound" preload="auto">
+  <source src="https://www.soundjay.com/buttons/sounds/button-09a.mp3" type="audio/mpeg">
+</audio>
+
 <div class="task-input-area">
   <input type="text" id="taskInput" placeholder="Tell Claude what to do..." onkeydown="if(event.key==='Enter')sendTask()">
   <button onclick="sendTask()" id="sendBtn">Send</button>
@@ -484,46 +488,33 @@ function refreshAll() {
   loadTasks();
 }
 
-// ── ALERT SOUND + VIBRATION ─────────────────────────────────
+// ── ALERT SOUND + VIBRATION + BROWSER NOTIFICATIONS ─────────
 
-// Create AudioContext immediately — browser will start it as "suspended"
-let audioCtx = null;
-try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
-
-// Resume AudioContext on ANY user interaction (tap, click, scroll, touch)
-// Keep trying until it's running — not { once: true }
-function tryResumeAudio() {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-      console.log('AudioContext resumed — sound active');
-      // Remove listeners once running
-      document.removeEventListener('click', tryResumeAudio);
-      document.removeEventListener('touchstart', tryResumeAudio);
-      document.removeEventListener('touchend', tryResumeAudio);
-    }).catch(() => {});
-  }
+// Request browser notification permission on load
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
 }
-document.addEventListener('click', tryResumeAudio);
-document.addEventListener('touchstart', tryResumeAudio);
-document.addEventListener('touchend', tryResumeAudio);
 
-function playAlert() {
-  // Always vibrate — works without AudioContext
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-  // Try to play sound
-  if (!audioCtx) return;
+function playAlert(title, message) {
+  // 1. Sound — simple audio element (works on Android Chrome)
   try {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.5);
-  } catch(e) { /* audio failed */ }
+    const snd = document.getElementById('alertSound');
+    snd.currentTime = 0;
+    snd.play().catch(() => {});
+  } catch(e) {}
+
+  // 2. Vibrate
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+  // 3. Browser notification (shows even when screen is off/locked)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title || 'SAA Alert', {
+        body: message || 'New update on your dashboard',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📋</text></svg>'
+      });
+    } catch(e) {}
+  }
 }
 
 // ── CONNECTION STATE ────────────────────────────────────────
@@ -605,10 +596,10 @@ function connectRealtime() {
         const type = (change.data || {}).type || '';
 
         if (table === 'notifications' && type === 'INSERT') {
-          playAlert();
+          playAlert('New Notification', (change.data.record || {}).title || 'New alert');
           loadNotifications();
         } else if (table === 'recommendations' && type === 'INSERT') {
-          playAlert();
+          playAlert('New Recommendation', (change.data.record || {}).message || 'Needs your approval');
           loadRecommendations();
         } else if (table === 'agent_tasks') {
           loadTasks();
@@ -655,8 +646,10 @@ async function pollWithAlerts() {
     const rRes = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?status=eq.pending&select=id`, { headers });
     const rData = await rRes.json();
 
-    if (nData.length > prevNotif || rData.length > prevRec) {
-      playAlert();
+    if (nData.length > prevNotif) {
+      playAlert('New Notification', 'You have new alerts');
+    } else if (rData.length > prevRec) {
+      playAlert('New Recommendation', 'Needs your approval');
     }
     lastNotifCount = nData.length;
     lastRecCount = rData.length;
