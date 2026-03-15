@@ -493,7 +493,37 @@ function refreshAll() {
   loadTasks();
 }
 
-// ── ALERT: VIBRATE + VISUAL FLASH + TITLE FLASH ─────────────
+// ── SOUND: Web Audio API — unlocked on first tap ────────────
+
+let audioCtx = null;
+
+// Unlock AudioContext on first user gesture
+document.addEventListener('click', function unlockAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  document.removeEventListener('click', unlockAudio);
+}, { once: true });
+
+function playBeep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // Play 3 short beeps: 880Hz
+    [0, 0.25, 0.5].forEach(delay => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'square';
+      gain.gain.value = 0.3;
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + 0.15);
+    });
+  } catch(e) { console.log('Sound failed:', e); }
+}
+
+// ── ALERT: SOUND + VIBRATE + BANNER + FLASH ─────────────────
 
 let titleFlashInterval = null;
 const originalTitle = document.title;
@@ -506,7 +536,10 @@ function playAlert(title, message) {
     banner.style.display = 'block';
   }
 
-  // 2. VIBRATE — works after any user gesture on Android
+  // 2. SOUND — 3 beeps via Web Audio API
+  playBeep();
+
+  // 3. VIBRATE — works after any user gesture on Android
   try { if (navigator.vibrate) navigator.vibrate([300, 200, 300, 200, 300]); } catch(e) {}
 
   // 3. VISUAL FLASH — flash the header red/navy
