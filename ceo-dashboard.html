@@ -527,19 +527,64 @@ function playChime() {
   } catch(e) { console.log('Sound failed:', e); }
 }
 
-// ── SERVICE WORKER + BACKGROUND NOTIFICATIONS ───────────────
+// ── SERVICE WORKER + WEB PUSH SUBSCRIPTION ──────────────────
 
+const VAPID_PUBLIC = 'BNQMEgvQ_nBDaQ4Fl1GgJTPVRRxGkbZVZ8zZ-Hqbjc1_F7NwAaDJRi__-cGSKL2rothyFWq0LMk3qUFLQhfUEdI';
 let swRegistration = null;
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function subscribeToPush(reg) {
+  try {
+    // Check existing subscription
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+      });
+      console.log('Push subscribed:', sub.endpoint);
+    } else {
+      console.log('Push already subscribed:', sub.endpoint);
+    }
+    // Save subscription to Supabase
+    const keys = sub.toJSON().keys;
+    await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth
+      })
+    });
+    console.log('Push subscription saved to Supabase');
+  } catch (e) {
+    console.log('Push subscription failed:', e);
+  }
+}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js')
-    .then(reg => {
+    .then(async reg => {
       swRegistration = reg;
       console.log('Service Worker registered');
-      return Notification.requestPermission();
-    })
-    .then(permission => {
+      const permission = await Notification.requestPermission();
       console.log('Notification permission:', permission);
+      if (permission === 'granted') {
+        await subscribeToPush(reg);
+      }
     })
     .catch(err => console.log('SW registration failed:', err));
 }
