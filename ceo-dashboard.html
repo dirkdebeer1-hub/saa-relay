@@ -486,19 +486,32 @@ function refreshAll() {
 
 // ── ALERT SOUND + VIBRATION ─────────────────────────────────
 
+// Create AudioContext immediately — browser will start it as "suspended"
 let audioCtx = null;
-let soundEnabled = true; // Always on — Dirk wants sound by default
+try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
 
-// Unlock AudioContext on first user interaction (browser requirement)
-document.addEventListener('click', function unlockAudio() {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-  } catch(e) { /* ignore */ }
-}, { once: true });
+// Resume AudioContext on ANY user interaction (tap, click, scroll, touch)
+// Keep trying until it's running — not { once: true }
+function tryResumeAudio() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      console.log('AudioContext resumed — sound active');
+      // Remove listeners once running
+      document.removeEventListener('click', tryResumeAudio);
+      document.removeEventListener('touchstart', tryResumeAudio);
+      document.removeEventListener('touchend', tryResumeAudio);
+    }).catch(() => {});
+  }
+}
+document.addEventListener('click', tryResumeAudio);
+document.addEventListener('touchstart', tryResumeAudio);
+document.addEventListener('touchend', tryResumeAudio);
 
 function playAlert() {
-  if (!soundEnabled || !audioCtx) return;
+  // Always vibrate — works without AudioContext
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  // Try to play sound
+  if (!audioCtx) return;
   try {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -511,7 +524,6 @@ function playAlert() {
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.5);
   } catch(e) { /* audio failed */ }
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 }
 
 // ── CONNECTION STATE ────────────────────────────────────────
