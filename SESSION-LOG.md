@@ -15,3 +15,5 @@
 | 5 | 00:35 | Claude Code | WhatsApp: message queued OK. Supabase notification: inserted (fixed column name status→is_read). Both channels operational. |
 | 6 | 00:40 | Dirk (via claude.ai) | Upgrade CEO dashboard with approval flow. Add recommendations table, APPROVE/REJECT/MODIFY buttons, SESSION-LOG.md. |
 | 7 | 00:45 | Claude Code | Created Supabase `recommendations` table. Updated ceo-dashboard.html with Approve tab + approval flow JS. Created SESSION-LOG.md. |
+| 8 | 00:50 | Dirk (via claude.ai) | Fix auto-refresh (use Supabase realtime WebSocket) + add notification sound (Web Audio API) + phone vibration. |
+| 9 | 00:55 | Claude Code | Added Supabase realtime WebSocket subscriptions (notifications, recommendations, agent_tasks). Added Web Audio API alert sound (880Hz) + navigator.vibrate. AudioContext resume on first click. Pushed all changes. |

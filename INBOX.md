@@ -1,6 +1,28 @@
 # INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-16T00:30Z
+# Last updated: 2026-03-16T01:00Z
+
+---
+
+## ENGINEER REPORT — 2026-03-16 (CEO DASHBOARD — REALTIME + SOUND)
+
+### MILESTONE: CEO Dashboard — Realtime Updates + Alert Sound
+
+Upgraded `ceo-dashboard.html` with two critical fixes:
+
+**1. Supabase Realtime WebSocket Subscriptions:**
+- Replaced 30-second polling with instant WebSocket push notifications
+- Subscribes to: `notifications` INSERT, `recommendations` INSERT, `agent_tasks` all events
+- Auto-reconnect on disconnect (5s delay) + 30s heartbeat to keep connection alive
+- Falls back to 30s polling if WebSocket fails
+
+**2. Alert Sound + Phone Vibration:**
+- Web Audio API: 880Hz oscillator with exponential gain ramp (0.5s duration)
+- Phone vibration pattern: 200ms-100ms-200ms on supported devices
+- AudioContext auto-resumes on first screen tap (browser policy)
+- Plays on every new notification, recommendation, or task update
+
+**CEO Dashboard is now fully live at:** https://dirkdebeer1-hub.github.io/saa-relay/ceo-dashboard.html
 
 ---
 

@@ -484,10 +484,122 @@ function refreshAll() {
   loadTasks();
 }
 
+// ── ALERT SOUND + VIBRATION ─────────────────────────────────
+
+let audioCtx = null;
+function playAlert() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.5);
+  } catch(e) { /* audio not available */ }
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+// Resume AudioContext on first user interaction (required by browsers)
+document.addEventListener('click', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, { once: true });
+
+// ── SUPABASE REALTIME SUBSCRIPTIONS ─────────────────────────
+
+let realtimeWs = null;
+let wsRef = 0;
+let heartbeatInterval = null;
+
+function connectRealtime() {
+  const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
+
+  try {
+    realtimeWs = new WebSocket(wsUrl);
+  } catch(e) {
+    console.error('Realtime WebSocket failed:', e);
+    return;
+  }
+
+  realtimeWs.onopen = () => {
+    console.log('Realtime connected');
+    // Subscribe to notifications INSERT
+    realtimeWs.send(JSON.stringify({
+      topic: 'realtime:public:notifications',
+      event: 'phx_join',
+      payload: { config: { broadcast: { self: false }, presence: { key: '' }, postgres_changes: [{ event: 'INSERT', schema: 'public', table: 'notifications' }] } },
+      ref: String(++wsRef)
+    }));
+    // Subscribe to recommendations INSERT
+    realtimeWs.send(JSON.stringify({
+      topic: 'realtime:public:recommendations',
+      event: 'phx_join',
+      payload: { config: { broadcast: { self: false }, presence: { key: '' }, postgres_changes: [{ event: 'INSERT', schema: 'public', table: 'recommendations' }] } },
+      ref: String(++wsRef)
+    }));
+    // Subscribe to agent_tasks changes
+    realtimeWs.send(JSON.stringify({
+      topic: 'realtime:public:agent_tasks',
+      event: 'phx_join',
+      payload: { config: { broadcast: { self: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'agent_tasks' }] } },
+      ref: String(++wsRef)
+    }));
+    // Heartbeat every 30s to keep connection alive
+    heartbeatInterval = setInterval(() => {
+      if (realtimeWs && realtimeWs.readyState === 1) {
+        realtimeWs.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++wsRef) }));
+      }
+    }, 30000);
+  };
+
+  realtimeWs.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.event === 'postgres_changes') {
+        const change = (msg.payload || {});
+        const table = (change.data || {}).table || '';
+        const type = (change.data || {}).type || '';
+
+        if (table === 'notifications' && type === 'INSERT') {
+          playAlert();
+          loadNotifications();
+        } else if (table === 'recommendations' && type === 'INSERT') {
+          playAlert();
+          loadRecommendations();
+          // Flash the Approve tab badge
+          const badge = document.getElementById('badge-approve');
+          badge.style.animation = 'none';
+          badge.offsetHeight; // reflow
+          badge.style.animation = '';
+        } else if (table === 'agent_tasks') {
+          loadTasks();
+        }
+      }
+    } catch(e) { /* ignore parse errors */ }
+  };
+
+  realtimeWs.onclose = () => {
+    console.log('Realtime disconnected — reconnecting in 5s');
+    clearInterval(heartbeatInterval);
+    setTimeout(connectRealtime, 5000);
+  };
+
+  realtimeWs.onerror = (e) => {
+    console.error('Realtime error:', e);
+    realtimeWs.close();
+  };
+}
+
 // Initial load
 refreshAll();
 
-// Auto-refresh every 30 seconds
+// Connect realtime for instant updates
+connectRealtime();
+
+// Fallback: poll every 30 seconds in case realtime drops
 setInterval(refreshAll, 30000);
 </script>
 </body>
