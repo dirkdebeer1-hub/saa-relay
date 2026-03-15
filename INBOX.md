@@ -1,6 +1,6 @@
 # INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-16T00:15Z
+# Last updated: 2026-03-16T00:30Z
 
 ---
 
@@ -40,7 +40,25 @@ Extended `build_app_data.py` with a full SARS-compliant tax engine (Annual Equiv
 - PayrollHistory embedded in DEFAULT_DATA — app loads with all companies showing "Done" in Month End panel
 - AHS preserves its manually verified figures (skipped by compute_payroll)
 
-**Next: P9-10 DevAudit sweep** — last remaining Phase 9 task.
+### P9-10: DevAudit Sweep — ✅ COMPLETE
+
+Static code audit of all 6,560 lines. Results:
+
+**133 onclick handlers verified** — zero dead buttons, zero missing methods.
+
+**3 HIGH severity bugs fixed:**
+1. `emp.bank` null safety — form + payslip pages would crash if bank data missing. Fixed with `(emp.bank || {}).property` pattern across all 13 occurrences.
+2. `fmtNum()` NaN guard — `fmtNum(undefined)` returned "NaN". Now returns "0.00".
+3. `fmtDate()` invalid date guard — `new Date('garbage')` now returns "—" instead of "Invalid Date".
+4. `hourlyRate` null guard — weekly payslips displayed "NaN/h". Now defaults to 0.
+
+**Pre-existing systems verified (all present):**
+- DevAudit overlay (Ctrl+Shift+D) — working, lines 6348-6551
+- PayslipValidator KC-01 to KC-12 — all 12 rules implemented, lines 6196-6275
+- Export/Import JSON backup — working, lines 5767-5799
+- Form labels — proper `<label>` tags on all company/employee form fields
+
+**Phase 9: 10/10 COMPLETE.**
 
 ---
 
@@ -257,7 +275,7 @@ Phase 5: Complete
 Phase 6: Complete
 Phase 7: Complete
 Phase 8: Complete
-Phase 9: 9/10 — DevAudit sweep pending
+Phase 9: 10/10 COMPLETE — DevAudit sweep done, 3 HIGH bugs fixed
 Phase 10: Not started — Website management
 Phase 11: Complete — relay active via saa-relay public repo
 ```
