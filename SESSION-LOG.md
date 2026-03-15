@@ -17,3 +17,5 @@
 | 7 | 00:45 | Claude Code | Created Supabase `recommendations` table. Updated ceo-dashboard.html with Approve tab + approval flow JS. Created SESSION-LOG.md. |
 | 8 | 00:50 | Dirk (via claude.ai) | Fix auto-refresh (use Supabase realtime WebSocket) + add notification sound (Web Audio API) + phone vibration. |
 | 9 | 00:55 | Claude Code | Added Supabase realtime WebSocket subscriptions (notifications, recommendations, agent_tasks). Added Web Audio API alert sound (880Hz) + navigator.vibrate. AudioContext resume on first click. Pushed all changes. |
+| 10 | 01:05 | Dirk | Realtime not connecting. Add 10s polling fallback with 🟢/🟡 indicator. Add visible "Enable Sound" button. Confirm MODIFIED task picked up. |
+| 11 | 01:10 | Claude Code | Dashboard v3: 10s polling fallback, 🟢 Live / 🟡 Polling indicator, "🔔 Tap to enable sound" button, plays test tone on tap. Confirmed MODIFIED task in agent_tasks (Phase 10 → add to pending list). Pushed. |

@@ -1,26 +1,35 @@
 # INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-16T01:00Z
+# Last updated: 2026-03-16T01:10Z
 
 ---
 
 ## ENGINEER REPORT — 2026-03-16 (CEO DASHBOARD — REALTIME + SOUND)
 
-### MILESTONE: CEO Dashboard — Realtime Updates + Alert Sound
+### MILESTONE: CEO Dashboard v3 — Reliable Polling + Sound Button
 
-Upgraded `ceo-dashboard.html` with two critical fixes:
+Upgraded `ceo-dashboard.html` with robust notification delivery:
 
-**1. Supabase Realtime WebSocket Subscriptions:**
-- Replaced 30-second polling with instant WebSocket push notifications
-- Subscribes to: `notifications` INSERT, `recommendations` INSERT, `agent_tasks` all events
-- Auto-reconnect on disconnect (5s delay) + 30s heartbeat to keep connection alive
-- Falls back to 30s polling if WebSocket fails
+**1. Connection State Indicator:**
+- Header shows 🟢 Live (WebSocket active) or 🟡 Polling (10s fallback)
+- WebSocket still attempted — if it connects, goes to 🟢 Live with instant push
+- If WebSocket fails or disconnects → automatic fallback to 🟡 Polling every 10 seconds
+- Auto-reconnect attempts every 5 seconds when WebSocket drops
 
-**2. Alert Sound + Phone Vibration:**
-- Web Audio API: 880Hz oscillator with exponential gain ramp (0.5s duration)
-- Phone vibration pattern: 200ms-100ms-200ms on supported devices
-- AudioContext auto-resumes on first screen tap (browser policy)
-- Plays on every new notification, recommendation, or task update
+**2. "Enable Sound" Button:**
+- Visible button in header: `🔔 Tap to enable sound alerts`
+- Dirk taps once → plays test tone (660Hz) + vibration → button turns green: `🔔 Sound ON`
+- After that, all new notifications/recommendations auto-play 880Hz alert + vibrate
+- No sound fires until button is tapped (browser AudioContext policy)
+
+**3. Polling Alert Detection:**
+- Every 10s poll compares unread notification count + pending recommendation count
+- If count increases → plays alert sound (even in polling mode)
+- Works reliably on all mobile browsers without WebSocket
+
+**4. MODIFIED Task Confirmed:**
+- Dirk's MODIFIED response ("add to pending list" for Phase 10) is in `agent_tasks` table
+- Claude Code will pick it up and add Phase 10 website audit to PENDING.md
 
 **CEO Dashboard is now fully live at:** https://dirkdebeer1-hub.github.io/saa-relay/ceo-dashboard.html
 

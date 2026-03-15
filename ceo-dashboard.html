@@ -84,7 +84,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <span class="status-pill" id="pill-notifications">0 alerts</span>
     <span class="status-pill" id="pill-approve">0 approvals</span>
     <span class="status-pill" id="pill-tasks">0 pending</span>
-    <span class="status-pill" id="pill-connected">connecting...</span>
+    <span class="status-pill" id="pill-connected">⏳ connecting</span>
+    <button id="sound-btn" onclick="enableSound()" style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--orange);color:white;border:none;cursor:pointer;font-weight:600;">🔔 Tap to enable sound</button>
   </div>
 </div>
 
@@ -487,9 +488,39 @@ function refreshAll() {
 // ── ALERT SOUND + VIBRATION ─────────────────────────────────
 
 let audioCtx = null;
-function playAlert() {
+let soundEnabled = false;
+
+function enableSound() {
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Play a short test tone to confirm it works
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 660;
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.3);
+    soundEnabled = true;
+    const btn = document.getElementById('sound-btn');
+    btn.textContent = '🔔 Sound ON';
+    btn.style.background = 'rgba(39,174,96,0.8)';
+    btn.onclick = null;
+    if (navigator.vibrate) navigator.vibrate(100);
+  } catch(e) {
+    console.error('Audio init failed:', e);
+    const btn = document.getElementById('sound-btn');
+    btn.textContent = '🔇 Not available';
+    btn.style.background = 'rgba(231,76,60,0.5)';
+  }
+}
+
+function playAlert() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -499,20 +530,31 @@ function playAlert() {
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.5);
-  } catch(e) { /* audio not available */ }
+  } catch(e) { /* audio failed */ }
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 }
 
-// Resume AudioContext on first user interaction (required by browsers)
-document.addEventListener('click', () => {
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-}, { once: true });
+// ── CONNECTION STATE ────────────────────────────────────────
+
+let connectionMode = 'polling'; // 'live' or 'polling'
+
+function updateConnectionPill() {
+  const pill = document.getElementById('pill-connected');
+  if (connectionMode === 'live') {
+    pill.textContent = '🟢 Live';
+    pill.style.background = 'rgba(39,174,96,0.4)';
+  } else {
+    pill.textContent = '🟡 Polling';
+    pill.style.background = 'rgba(243,156,18,0.4)';
+  }
+}
 
 // ── SUPABASE REALTIME SUBSCRIPTIONS ─────────────────────────
 
 let realtimeWs = null;
 let wsRef = 0;
 let heartbeatInterval = null;
+let realtimeConnected = false;
 
 function connectRealtime() {
   const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
@@ -521,11 +563,17 @@ function connectRealtime() {
     realtimeWs = new WebSocket(wsUrl);
   } catch(e) {
     console.error('Realtime WebSocket failed:', e);
+    connectionMode = 'polling';
+    updateConnectionPill();
     return;
   }
 
   realtimeWs.onopen = () => {
     console.log('Realtime connected');
+    realtimeConnected = true;
+    connectionMode = 'live';
+    updateConnectionPill();
+
     // Subscribe to notifications INSERT
     realtimeWs.send(JSON.stringify({
       topic: 'realtime:public:notifications',
@@ -547,7 +595,8 @@ function connectRealtime() {
       payload: { config: { broadcast: { self: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'agent_tasks' }] } },
       ref: String(++wsRef)
     }));
-    // Heartbeat every 30s to keep connection alive
+    // Heartbeat every 30s
+    clearInterval(heartbeatInterval);
     heartbeatInterval = setInterval(() => {
       if (realtimeWs && realtimeWs.readyState === 1) {
         realtimeWs.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++wsRef) }));
@@ -569,11 +618,6 @@ function connectRealtime() {
         } else if (table === 'recommendations' && type === 'INSERT') {
           playAlert();
           loadRecommendations();
-          // Flash the Approve tab badge
-          const badge = document.getElementById('badge-approve');
-          badge.style.animation = 'none';
-          badge.offsetHeight; // reflow
-          badge.style.animation = '';
         } else if (table === 'agent_tasks') {
           loadTasks();
         }
@@ -582,25 +626,61 @@ function connectRealtime() {
   };
 
   realtimeWs.onclose = () => {
-    console.log('Realtime disconnected — reconnecting in 5s');
+    console.log('Realtime disconnected — falling back to polling');
+    realtimeConnected = false;
+    connectionMode = 'polling';
+    updateConnectionPill();
     clearInterval(heartbeatInterval);
+    // Try to reconnect after 5s
     setTimeout(connectRealtime, 5000);
   };
 
   realtimeWs.onerror = (e) => {
     console.error('Realtime error:', e);
-    realtimeWs.close();
+    realtimeConnected = false;
+    connectionMode = 'polling';
+    updateConnectionPill();
+    try { realtimeWs.close(); } catch(ex) {}
   };
 }
+
+// ── POLLING FALLBACK (10 seconds) ───────────────────────────
+
+let lastNotifCount = 0;
+let lastRecCount = 0;
+
+async function pollWithAlerts() {
+  // Track counts before refresh to detect new items
+  const prevNotif = lastNotifCount;
+  const prevRec = lastRecCount;
+
+  await refreshAll();
+
+  // Check if new items appeared (for polling mode alerts)
+  try {
+    const nRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications?is_read=eq.false&select=id`, { headers });
+    const nData = await nRes.json();
+    const rRes = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?status=eq.pending&select=id`, { headers });
+    const rData = await rRes.json();
+
+    if (nData.length > prevNotif || rData.length > prevRec) {
+      playAlert();
+    }
+    lastNotifCount = nData.length;
+    lastRecCount = rData.length;
+  } catch(e) { /* polling count check failed */ }
+}
+
+// ── INIT ────────────────────────────────────────────────────
 
 // Initial load
 refreshAll();
 
-// Connect realtime for instant updates
+// Try realtime first
 connectRealtime();
 
-// Fallback: poll every 30 seconds in case realtime drops
-setInterval(refreshAll, 30000);
+// Always poll every 10 seconds as fallback
+setInterval(pollWithAlerts, 10000);
 </script>
 </body>
 </html>
