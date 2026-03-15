@@ -6,7 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1F4E79">
-<title>SAA Command</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>SAA Command v3</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root { --navy: #1F4E79; --dark: #163A5C; --warm: #2C3E50; --muted: #4A6580; --bg: #f5f7fa; --card: #fff; --red: #e74c3c; --green: #27ae60; --orange: #f39c12; --blue: #3498db; }
@@ -78,15 +81,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <div class="header">
   <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
-  <h1>SAA Command</h1>
+  <h1>SAA Command <span style="font-size:12px;opacity:0.6;">v3</span></h1>
   <div class="sub">SA Accountants — CEO Dashboard</div>
   <div class="status-bar">
     <span class="status-pill" id="pill-notifications">0 alerts</span>
     <span class="status-pill" id="pill-approve">0 approvals</span>
     <span class="status-pill" id="pill-tasks">0 pending</span>
     <span class="status-pill" id="pill-connected">⏳ connecting</span>
-    <button id="sound-btn" onclick="enableSound()" style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--orange);color:white;border:none;cursor:pointer;font-weight:600;">🔔 Tap to enable sound</button>
   </div>
+</div>
+
+<div id="sound-bar" style="width:100%;padding:12px 20px;background:var(--orange);text-align:center;cursor:pointer;" onclick="enableSound()">
+  <span id="sound-btn" style="font-size:16px;font-weight:700;color:white;">🔔 Tap here to enable sound alerts</span>
 </div>
 
 <div class="tabs">
@@ -504,16 +510,19 @@ function enableSound() {
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.3);
     soundEnabled = true;
+    const bar = document.getElementById('sound-bar');
     const btn = document.getElementById('sound-btn');
-    btn.textContent = '🔔 Sound ON';
-    btn.style.background = 'rgba(39,174,96,0.8)';
-    btn.onclick = null;
+    bar.style.background = 'var(--green)';
+    bar.onclick = null;
+    bar.style.cursor = 'default';
+    btn.textContent = '🔔 Sound ON — alerts will play automatically';
     if (navigator.vibrate) navigator.vibrate(100);
   } catch(e) {
     console.error('Audio init failed:', e);
+    const bar = document.getElementById('sound-bar');
     const btn = document.getElementById('sound-btn');
-    btn.textContent = '🔇 Not available';
-    btn.style.background = 'rgba(231,76,60,0.5)';
+    bar.style.background = 'var(--red)';
+    btn.textContent = '🔇 Sound not available on this device';
   }
 }
 
