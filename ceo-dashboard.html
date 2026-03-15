@@ -501,23 +501,53 @@ document.addEventListener('click', function unlockAudio() {
   document.removeEventListener('click', unlockAudio);
 }, { once: true });
 
-function playBeep() {
+function playChime() {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    // Play 3 short beeps: 880Hz
-    [0, 0.25, 0.5].forEach(delay => {
+    // Gentle two-tone chime: C5 → E5
+    [523.25, 659.25].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.frequency.value = 880;
-      osc.type = 'square';
-      gain.gain.value = 0.3;
-      osc.start(audioCtx.currentTime + delay);
-      osc.stop(audioCtx.currentTime + delay + 0.15);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.18);
+      gain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + i * 0.18 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.18 + 0.4);
+      osc.start(audioCtx.currentTime + i * 0.18);
+      osc.stop(audioCtx.currentTime + i * 0.18 + 0.4);
     });
   } catch(e) { console.log('Sound failed:', e); }
+}
+
+// ── SERVICE WORKER + BACKGROUND NOTIFICATIONS ───────────────
+
+let swRegistration = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      swRegistration = reg;
+      console.log('Service Worker registered');
+      return Notification.requestPermission();
+    })
+    .then(permission => {
+      console.log('Notification permission:', permission);
+    })
+    .catch(err => console.log('SW registration failed:', err));
+}
+
+function showLocalNotification(title, message) {
+  if (swRegistration && Notification.permission === 'granted') {
+    swRegistration.showNotification(title || 'SAA Alert', {
+      body: message || 'You have a new notification',
+      vibrate: [300, 200, 300],
+      tag: 'saa-alert-' + Date.now(),
+      renotify: true
+    });
+  }
 }
 
 // ── ALERT: SOUND + VIBRATE + BANNER + FLASH ─────────────────
@@ -533,8 +563,11 @@ function playAlert(title, message) {
     banner.style.display = 'block';
   }
 
-  // 2. SOUND — 3 beeps via Web Audio API
-  playBeep();
+  // 2. SOUND — gentle two-tone chime
+  playChime();
+
+  // 2b. BACKGROUND NOTIFICATION — fires even if tab is in background or phone locked
+  showLocalNotification(title, message);
 
   // 3. VIBRATE — works after any user gesture on Android
   try { if (navigator.vibrate) navigator.vibrate([300, 200, 300, 200, 300]); } catch(e) {}
