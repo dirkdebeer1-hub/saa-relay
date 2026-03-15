@@ -1,17 +1,16 @@
-const CACHE = 'saa-v1';
+// SAA Command — Service Worker v4
+// No caching on install — network-first, instant activation
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c =>
-    c.addAll(['/saa-relay/ceo-dashboard.html'])));
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => self.clients.claim());
+self.addEventListener('activate', e => {
+  e.waitUntil(self.clients.claim());
+});
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
 
 self.addEventListener('push', e => {
