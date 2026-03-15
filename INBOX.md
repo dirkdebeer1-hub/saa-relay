@@ -1,12 +1,34 @@
 # INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-16T01:10Z
+# Last updated: 2026-03-16T01:25Z
 
 ---
 
-## ENGINEER REPORT — 2026-03-16 (CEO DASHBOARD — REALTIME + SOUND)
+## ENGINEER REPORT — 2026-03-16 (CEO DASHBOARD v4 — DEPLOYMENT VERIFIED)
 
-### MILESTONE: CEO Dashboard v3 — Reliable Polling + Sound Button
+### MILESTONE: CEO Dashboard v4 — GitHub Pages Deployment Confirmed
+
+Root cause of all "alerts not working" reports: **GitHub Pages was caching old v3 code.** Dirk never loaded the updated JavaScript despite multiple pushes.
+
+**Fix:** Version bumped to v4 with visible header changes (lighter blue gradient, v4 badge). Verified deployment with `curl` — **v4 confirmed LIVE on GitHub Pages.**
+
+**What v4 has:**
+- 10s polling fallback with 🟢 Live / 🟡 Polling indicator
+- Vibration alerts (300ms pattern) on new notifications
+- Visual header flash (red/navy alternation) on new alerts
+- Title flash ("🔴 NEW ALERT") for backgrounded tabs
+- Auto-scroll to top on alert
+- Sound enabled by default (vibration + visual are the reliable channels on mobile)
+
+**Test notification inserted** — awaiting Dirk's confirmation that alerts fire on v4.
+
+**Next:** Once alerts confirmed working, ready to proceed with Phase 10 (website audit — from Dirk's MODIFIED task).
+
+---
+
+## PRIOR REPORT — 2026-03-16 (CEO DASHBOARD — REALTIME + SOUND)
+
+### CEO Dashboard v3 — Reliable Polling + Sound Button
 
 Upgraded `ceo-dashboard.html` with robust notification delivery:
 

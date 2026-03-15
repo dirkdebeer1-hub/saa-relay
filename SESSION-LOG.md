@@ -19,3 +19,6 @@
 | 9 | 00:55 | Claude Code | Added Supabase realtime WebSocket subscriptions (notifications, recommendations, agent_tasks). Added Web Audio API alert sound (880Hz) + navigator.vibrate. AudioContext resume on first click. Pushed all changes. |
 | 10 | 01:05 | Dirk | Realtime not connecting. Add 10s polling fallback with 🟢/🟡 indicator. Add visible "Enable Sound" button. Confirm MODIFIED task picked up. |
 | 11 | 01:10 | Claude Code | Dashboard v3: 10s polling fallback, 🟢 Live / 🟡 Polling indicator, "🔔 Tap to enable sound" button, plays test tone on tap. Confirmed MODIFIED task in agent_tasks (Phase 10 → add to pending list). Pushed. |
+| 12 | 01:15 | Dirk | Sound not working on Android Chrome — tried Web Audio API, external audio file, browser Notifications API. All failed. Likely root cause: GitHub Pages caching old v3 code. |
+| 13 | 01:20 | Dirk | Force version bump to v4 with visible header change. Verify deployment with curl before testing alerts. |
+| 14 | 01:25 | Claude Code | Dashboard v4: version bump, header gradient changed (#2a6496→#1a3a5c), v4 badge visible. Pushed. Curl confirmed v4 LIVE on GitHub Pages. Inserted test notification via Supabase SQL. |
