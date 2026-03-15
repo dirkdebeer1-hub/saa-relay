@@ -57,6 +57,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .quick-btn .icon { font-size: 24px; margin-bottom: 4px; }
 .quick-btn .label { font-size: 12px; font-weight: 600; color: var(--dark); }
 .refresh-btn { position: absolute; right: 16px; top: 16px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.7; } }
 .loading { text-align: center; padding: 20px; color: #999; }
 /* Approval cards */
 .card.rec { border-left-color: var(--orange); }
@@ -78,6 +79,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </style>
 </head>
 <body>
+
+<div id="alert-banner" style="display:none;background:#e74c3c;color:white;padding:16px 20px;text-align:center;font-size:16px;font-weight:700;cursor:pointer;z-index:200;position:sticky;top:0;animation:pulse 0.5s infinite alternate;" onclick="dismissBanner()">
+  🔴 NEW ALERT — TAP TO DISMISS
+</div>
 
 <div class="header">
   <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
@@ -491,41 +496,48 @@ let titleFlashInterval = null;
 const originalTitle = document.title;
 
 function playAlert(title, message) {
-  // 1. VIBRATE — most reliable on Android
+  // 1. PERSISTENT RED BANNER — stays until tapped
+  const banner = document.getElementById('alert-banner');
+  if (banner) {
+    banner.textContent = '🔴 ' + (title || 'NEW ALERT') + ' — TAP TO DISMISS';
+    banner.style.display = 'block';
+  }
+
+  // 2. VIBRATE — works after any user gesture on Android
   try { if (navigator.vibrate) navigator.vibrate([300, 200, 300, 200, 300]); } catch(e) {}
 
-  // 2. VISUAL FLASH — flash the header red/navy to catch attention
+  // 3. VISUAL FLASH — flash the header red/navy
   const header = document.querySelector('.header');
   if (header) {
     let flashes = 0;
     const flashInterval = setInterval(() => {
       header.style.background = flashes % 2 === 0 ? 'var(--red)' : '';
       flashes++;
-      if (flashes >= 6) {
-        clearInterval(flashInterval);
-        header.style.background = '';
-      }
+      if (flashes >= 6) { clearInterval(flashInterval); header.style.background = ''; }
     }, 300);
   }
 
-  // 3. TITLE FLASH — alternates browser tab title to grab attention
+  // 4. TITLE FLASH
   if (titleFlashInterval) clearInterval(titleFlashInterval);
   let count = 0;
   titleFlashInterval = setInterval(() => {
     document.title = count % 2 === 0 ? '🔴 ' + (title || 'NEW ALERT') : originalTitle;
     count++;
-    if (count >= 20) { // Flash for ~10 seconds
-      clearInterval(titleFlashInterval);
-      titleFlashInterval = null;
-      document.title = originalTitle;
-    }
+    if (count >= 20) { clearInterval(titleFlashInterval); titleFlashInterval = null; document.title = originalTitle; }
   }, 500);
 
-  // 4. SCROLL TO TOP — make sure alerts tab is visible
+  // 5. SCROLL TO TOP
   window.scrollTo(0, 0);
 
-  // 5. LOG — so we can debug
+  // 6. LOG
   console.log('ALERT FIRED:', title, message, new Date().toISOString());
+}
+
+function dismissBanner() {
+  const banner = document.getElementById('alert-banner');
+  if (banner) banner.style.display = 'none';
+  // Vibrate on dismiss as confirmation tap registered
+  try { if (navigator.vibrate) navigator.vibrate(100); } catch(e) {}
 }
 
 // ── CONNECTION STATE ────────────────────────────────────────
@@ -669,14 +681,25 @@ async function pollWithAlerts() {
 
 // ── INIT ────────────────────────────────────────────────────
 
-// Initial load
-refreshAll();
-
-// Try realtime first
-connectRealtime();
-
-// Always poll every 10 seconds as fallback
-setInterval(pollWithAlerts, 10000);
+// Initial load — set baseline counts FIRST so only new items trigger alerts
+async function init() {
+  await refreshAll();
+  // Set baseline counts from current state
+  try {
+    const nRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications?is_read=eq.false&is_dismissed=eq.false&select=id`, { headers });
+    const nData = await nRes.json();
+    lastNotifCount = Array.isArray(nData) ? nData.length : 0;
+    const rRes = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?status=eq.pending&select=id`, { headers });
+    const rData = await rRes.json();
+    lastRecCount = Array.isArray(rData) ? rData.length : 0;
+    console.log('Baseline set:', lastNotifCount, 'notifications,', lastRecCount, 'recommendations');
+  } catch(e) { console.log('Baseline count failed:', e); }
+  // Try realtime
+  connectRealtime();
+  // Always poll every 10 seconds as fallback
+  setInterval(pollWithAlerts, 10000);
+}
+init();
 </script>
 </body>
 </html>
