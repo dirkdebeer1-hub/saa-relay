@@ -71,9 +71,9 @@ Identified and flagged 7 corrupted duplicates (old v1 nested format). All primar
 | P0-A1 | ✅ COMPLETE | — |
 | P0-A2 | ✅ COMPLETE | — |
 | P0-A3 | ✅ COMPLETE | — |
-| P0-B1 | 🔄 IN PROGRESS | Replace hardcoded companies with dynamic loader |
-| P0-B2-B3 | PENDING | All clients in app selector |
-| P0-C1-C14 | PENDING | Dashboard payroll actions |
+| P0-B1 | ✅ COMPLETE | Hardcoded → generated from combined_payroll.json via build script |
+| P0-B2-B3 | ✅ COMPLETE | 50 companies in selector + runtime refresh from URL/file |
+| P0-C1-C14 | 🔄 IN PROGRESS | Dashboard payroll actions |
 | P0-D1-D7 | PENDING | March 2026 payroll run |
 | P0-E1-E6 | PENDING | Client notifications |
 
