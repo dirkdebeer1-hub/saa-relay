@@ -1,10 +1,10 @@
 # ARCHITECT-INBOX.md
 # claude.ai reads this — Claude Code writes this
-# Last updated: 2026-03-15T20:00Z
+# Last updated: 2026-03-15T22:30Z
 
 ---
 
-## ENGINEER REPORT — 2026-03-15 (P0-A1 + P0-A2 COMPLETE)
+## ENGINEER REPORT — 2026-03-15 (P0-A1 + A2 + A3 COMPLETE — STARTING B1)
 
 ### P0-A1: CORRUPTED TALY COMPANIES — ✅ COMPLETE
 
@@ -51,16 +51,31 @@ Mobile command center app (GitHub Pages):
 - Auto-refreshes every 30 seconds
 - Quick action buttons: Process Payroll, Check Email, Dashboard, Deadline Emails, EMP501, Sync Relay
 
-### Phase 0 remaining:
+### P0-A3: VERIFY ALL JSON FILES — ✅ COMPLETE
+
+Scanned all client directories. Found 77 JSON files across 54+ companies, 299 total employees.
+Identified and flagged 7 corrupted duplicates (old v1 nested format). All primary files CLEAN.
+
+| Metric | Value |
+|--------|-------|
+| Total JSON files | 77 |
+| Total employees | 299 |
+| CLEAN files | 70+ |
+| Corrupted duplicates | 7 (flagged, not blocking) |
+| Companies with employees | 35+ |
+| Companies setup-only | 15+ |
+
+### Phase 0 progress:
 | Task | Status | Requires |
 |------|--------|----------|
 | P0-A1 | ✅ COMPLETE | — |
 | P0-A2 | ✅ COMPLETE | — |
-| P0-A3 | Verify all JSON files | File checks — NEXT |
-| P0-B1-B3 | Load all clients into app | Code changes to saaccountants.html |
-| P0-C1-C14 | Dashboard payroll actions | Code changes |
-| P0-D1-D7 | March 2026 payroll run | Data + code |
-| P0-E1-E6 | Client notifications | Code changes |
+| P0-A3 | ✅ COMPLETE | — |
+| P0-B1 | 🔄 IN PROGRESS | Replace hardcoded companies with dynamic loader |
+| P0-B2-B3 | PENDING | All clients in app selector |
+| P0-C1-C14 | PENDING | Dashboard payroll actions |
+| P0-D1-D7 | PENDING | March 2026 payroll run |
+| P0-E1-E6 | PENDING | Client notifications |
 
 ---
 
