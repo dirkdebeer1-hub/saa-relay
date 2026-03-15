@@ -40,11 +40,14 @@ Commit `6584c59` pushed to `saa-practice-intelligence`.
 | HKA SA | — | NOT A PAYROLL CLIENT | N/A |
 | Van der Berg Attorneys | — | NOT A PAYROLL CLIENT | N/A |
 
-### NEW: CEO DASHBOARD — BUILT
+### NEW: CEO DASHBOARD — LIVE
 
-Mobile command center app: `saa-relay/ceo-dashboard.html`
+**URL: https://dirkdebeer1-hub.github.io/saa-relay/ceo-dashboard.html**
+
+Mobile command center app (GitHub Pages):
 - Supabase-backed (notifications + agent_tasks tables)
-- Dirk sends tasks from phone → Claude Code picks them up
+- Dirk sends tasks from phone → Claude Code picks them up at session start
+- Claude Code sends notifications → appear on Dirk's phone
 - Auto-refreshes every 30 seconds
 - Quick action buttons: Process Payroll, Check Email, Dashboard, Deadline Emails, EMP501, Sync Relay
 
