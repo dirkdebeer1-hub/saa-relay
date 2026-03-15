@@ -91,10 +91,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
-<div id="sound-bar" style="width:100%;padding:12px 20px;background:var(--orange);text-align:center;cursor:pointer;" onclick="enableSound()">
-  <span id="sound-btn" style="font-size:16px;font-weight:700;color:white;">🔔 Tap here to enable sound alerts</span>
-</div>
-
 <div class="tabs">
   <div class="tab active" data-panel="notifications" onclick="switchTab(this)">Alerts <span class="badge" id="badge-notif" style="display:none">0</span></div>
   <div class="tab" data-panel="approve" onclick="switchTab(this)">Approve <span class="badge" id="badge-approve" style="display:none">0</span></div>
@@ -249,21 +245,23 @@ function renderTaskCard(task) {
 
 async function loadNotifications() {
   try {
+    // Fetch ALL notifications — no type filter, just unread first then recent
     const res = await fetch(`${SUPABASE_URL}/rest/v1/notifications?order=created_at.desc&limit=20`, { headers });
     const data = await res.json();
 
-    const needsInput = data.filter(n => n.type === 'needs_input' && !n.is_dismissed);
-    const recent = data.filter(n => n.type !== 'needs_input' || n.is_dismissed);
+    // Split: unread (not dismissed) vs read/dismissed
+    const unreadItems = data.filter(n => !n.is_read && !n.is_dismissed);
+    const readItems = data.filter(n => n.is_read || n.is_dismissed);
 
     document.getElementById('notif-needs-input').innerHTML =
-      needsInput.length ? needsInput.map(n => renderCard(n)).join('') :
-      '<div class="empty">No items need your input right now.</div>';
+      unreadItems.length ? unreadItems.map(n => renderCard(n)).join('') :
+      '<div class="empty">No unread notifications.</div>';
 
     document.getElementById('notif-recent').innerHTML =
-      recent.length ? recent.slice(0, 10).map(n => renderCard(n)).join('') :
+      readItems.length ? readItems.slice(0, 10).map(n => renderCard(n)).join('') :
       '<div class="empty">No recent notifications.</div>';
 
-    const unread = data.filter(n => !n.is_read && n.type === 'needs_input').length;
+    const unread = unreadItems.length;
     const badge = document.getElementById('badge-notif');
     if (unread > 0) { badge.textContent = unread; badge.style.display = 'inline-block'; }
     else { badge.style.display = 'none'; }
@@ -271,12 +269,7 @@ async function loadNotifications() {
     document.getElementById('pill-notifications').textContent = unread > 0 ? unread + ' alerts' : 'no alerts';
     if (unread > 0) document.getElementById('pill-notifications').classList.add('alert');
     else document.getElementById('pill-notifications').classList.remove('alert');
-
-    document.getElementById('pill-connected').textContent = 'connected';
-    document.getElementById('pill-connected').style.background = 'rgba(39,174,96,0.4)';
   } catch (e) {
-    document.getElementById('pill-connected').textContent = 'offline';
-    document.getElementById('pill-connected').style.background = 'rgba(231,76,60,0.4)';
     console.error('Failed to load notifications:', e);
   }
 }
@@ -494,75 +487,15 @@ function refreshAll() {
 // ── ALERT SOUND + VIBRATION ─────────────────────────────────
 
 let audioCtx = null;
-let soundEnabled = false;
+let soundEnabled = true; // Always on — Dirk wants sound by default
 
-function enableSound() {
+// Unlock AudioContext on first user interaction (browser requirement)
+document.addEventListener('click', function unlockAudio() {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    // Play a short test tone to confirm it works
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.frequency.value = 660;
-    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.3);
-    setSoundOn();
-    if (navigator.vibrate) navigator.vibrate(100);
-  } catch(e) {
-    console.error('Audio init failed:', e);
-    const bar = document.getElementById('sound-bar');
-    const btn = document.getElementById('sound-btn');
-    bar.style.background = 'var(--red)';
-    btn.textContent = '🔇 Sound not available on this device';
-  }
-}
-
-function setSoundOn() {
-  soundEnabled = true;
-  localStorage.setItem('saa_sound_enabled', 'true');
-  const bar = document.getElementById('sound-bar');
-  const btn = document.getElementById('sound-btn');
-  bar.style.background = 'var(--green)';
-  bar.onclick = null;
-  bar.style.cursor = 'default';
-  btn.textContent = '🔔 Sound ON — alerts will play automatically';
-}
-
-// Restore sound preference from localStorage
-if (localStorage.getItem('saa_sound_enabled') === 'true') {
-  soundEnabled = true;
-  // Show green bar immediately — no tap needed
-  const bar = document.getElementById('sound-bar');
-  const btn = document.getElementById('sound-btn');
-  if (bar && btn) {
-    bar.style.background = 'var(--green)';
-    bar.onclick = null;
-    bar.style.cursor = 'default';
-    btn.textContent = '🔔 Sound ON — alerts will play automatically';
-  }
-  // AudioContext needs a user gesture to resume after reload.
-  // Attach a one-time listener: first touch/click silently creates
-  // and resumes the AudioContext — alerts work from that point.
-  document.addEventListener('click', function restoreAudio() {
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch(e) { /* ignore */ }
-    document.removeEventListener('click', restoreAudio);
-  }, { once: true });
-} else {
-  // Sound not yet enabled — unlock AudioContext on first interaction anyway
-  // so that when user taps Enable Sound, it works immediately
-  document.addEventListener('click', function unlockAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    document.removeEventListener('click', unlockAudio);
-  }, { once: true });
-}
+  } catch(e) { /* ignore */ }
+}, { once: true });
 
 function playAlert() {
   if (!soundEnabled || !audioCtx) return;
