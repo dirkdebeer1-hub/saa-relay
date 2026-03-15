@@ -55,6 +55,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .quick-btn .label { font-size: 12px; font-weight: 600; color: var(--dark); }
 .refresh-btn { position: absolute; right: 16px; top: 16px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
 .loading { text-align: center; padding: 20px; color: #999; }
+/* Approval cards */
+.card.rec { border-left-color: var(--orange); }
+.card.rec.from-ai { border-left-color: #9b59b6; }
+.card.rec.from-code { border-left-color: var(--blue); }
+.rec-source { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; color: white; }
+.rec-source.ai { background: #9b59b6; }
+.rec-source.code { background: var(--blue); }
+.rec-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.rec-actions button { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-approve { background: var(--green); color: white; }
+.btn-reject { background: var(--red); color: white; }
+.btn-modify { background: var(--orange); color: white; }
+.priority-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+.priority-badge.urgent { background: var(--red); color: white; }
+.priority-badge.high { background: var(--orange); color: white; }
+.priority-badge.normal { background: #e8ecf0; color: var(--dark); }
+.priority-badge.low { background: #e8ecf0; color: #999; }
 </style>
 </head>
 <body>
@@ -65,6 +82,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sub">SA Accountants — CEO Dashboard</div>
   <div class="status-bar">
     <span class="status-pill" id="pill-notifications">0 alerts</span>
+    <span class="status-pill" id="pill-approve">0 approvals</span>
     <span class="status-pill" id="pill-tasks">0 pending</span>
     <span class="status-pill" id="pill-connected">connecting...</span>
   </div>
@@ -72,6 +90,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <div class="tabs">
   <div class="tab active" data-panel="notifications" onclick="switchTab(this)">Alerts <span class="badge" id="badge-notif" style="display:none">0</span></div>
+  <div class="tab" data-panel="approve" onclick="switchTab(this)">Approve <span class="badge" id="badge-approve" style="display:none">0</span></div>
   <div class="tab" data-panel="tasks" onclick="switchTab(this)">Tasks <span class="badge" id="badge-tasks" style="display:none">0</span></div>
   <div class="tab" data-panel="command" onclick="switchTab(this)">Command</div>
 </div>
@@ -83,6 +102,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div id="notif-needs-input"><div class="loading">Loading...</div></div>
     <div class="section-title">Recent</div>
     <div id="notif-recent"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- APPROVE PANEL -->
+<div class="panel" id="panel-approve">
+  <div class="content">
+    <div class="section-title">Pending Recommendations</div>
+    <div id="recs-pending"><div class="loading">Loading...</div></div>
+    <div class="section-title">Recently Resolved</div>
+    <div id="recs-resolved"><div class="loading">Loading...</div></div>
   </div>
 </div>
 
@@ -121,7 +150,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="icon">📋</div>
         <div class="label">EMP501</div>
       </div>
-      <div class="quick-btn" onclick="sendQuickTask('Update ARCHITECT-INBOX.md and push to saa-relay')">
+      <div class="quick-btn" onclick="sendQuickTask('Update INBOX.md and push to saa-relay')">
         <div class="icon">🔄</div>
         <div class="label">Sync Relay</div>
       </div>
@@ -326,8 +355,132 @@ async function cancelTask(id) {
   await loadTasks();
 }
 
+// ── RECOMMENDATIONS / APPROVAL FLOW ──────────────────────────
+
+function renderRecCard(rec) {
+  const sourceClass = rec.source === 'claude_ai' ? 'ai' : 'code';
+  const sourceLabel = rec.source === 'claude_ai' ? 'claude.ai' : 'Claude Code';
+  const cardClass = rec.source === 'claude_ai' ? 'from-ai' : 'from-code';
+  const prioClass = rec.priority || 'normal';
+
+  if (rec.status !== 'pending') {
+    const statusColor = rec.status === 'approved' ? 'green' : rec.status === 'rejected' ? 'red' : 'orange';
+    return `<div class="card ${cardClass}" style="opacity:0.6;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span class="rec-source ${sourceClass}">${sourceLabel}</span>
+        <span class="type ${statusColor}">${rec.status.toUpperCase()}</span>
+      </div>
+      <div class="title">${rec.message}</div>
+      <div class="body">${rec.recommendation_text}</div>
+      ${rec.dirk_note ? `<div class="body" style="color:var(--navy);margin-top:4px;font-style:italic;">Note: ${rec.dirk_note}</div>` : ''}
+      <div class="time">${timeAgo(rec.created_at)}${rec.resolved_at ? ' · resolved ' + timeAgo(rec.resolved_at) : ''}</div>
+    </div>`;
+  }
+
+  return `<div class="card rec ${cardClass}">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+      <span class="rec-source ${sourceClass}">${sourceLabel}</span>
+      <span class="priority-badge ${prioClass}">${prioClass.toUpperCase()}</span>
+    </div>
+    <div class="title">${rec.message}</div>
+    <div class="body">${rec.recommendation_text}</div>
+    <div class="time">${timeAgo(rec.created_at)}</div>
+    <div class="rec-actions">
+      <button class="btn-approve" onclick="approveRec('${rec.id}')">✅ APPROVE</button>
+      <button class="btn-reject" onclick="rejectRec('${rec.id}')">❌ REJECT</button>
+      <button class="btn-modify" onclick="modifyRec('${rec.id}')">✏️ MODIFY</button>
+    </div>
+  </div>`;
+}
+
+async function loadRecommendations() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?order=created_at.desc&limit=30`, { headers });
+    const data = await res.json();
+
+    const pending = data.filter(r => r.status === 'pending');
+    const resolved = data.filter(r => r.status !== 'pending');
+
+    document.getElementById('recs-pending').innerHTML =
+      pending.length ? pending.map(r => renderRecCard(r)).join('') :
+      '<div class="empty">No pending recommendations. Both AIs are quiet.</div>';
+
+    document.getElementById('recs-resolved').innerHTML =
+      resolved.length ? resolved.slice(0, 10).map(r => renderRecCard(r)).join('') :
+      '<div class="empty">No resolved recommendations yet.</div>';
+
+    const badge = document.getElementById('badge-approve');
+    if (pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+
+    document.getElementById('pill-approve').textContent = pending.length > 0 ? pending.length + ' approvals' : 'no approvals';
+    if (pending.length > 0) document.getElementById('pill-approve').classList.add('alert');
+    else document.getElementById('pill-approve').classList.remove('alert');
+  } catch (e) {
+    console.error('Failed to load recommendations:', e);
+  }
+}
+
+async function approveRec(id) {
+  // Mark as approved
+  await fetch(`${SUPABASE_URL}/rest/v1/recommendations?id=eq.${id}`, {
+    method: 'PATCH', headers, body: JSON.stringify({ status: 'approved', resolved_at: new Date().toISOString() })
+  });
+  // Get the recommendation to copy to agent_tasks
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?id=eq.${id}`, { headers });
+  const recs = await res.json();
+  if (recs.length > 0) {
+    const rec = recs[0];
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_tasks`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        source: 'dirk', target: 'claude_code',
+        task: `[APPROVED] ${rec.message}: ${rec.recommendation_text}`,
+        priority: rec.priority || 'normal', status: 'pending'
+      })
+    });
+  }
+  await loadRecommendations();
+  await loadTasks();
+}
+
+async function rejectRec(id) {
+  const reason = prompt('Reason for rejection (optional):');
+  await fetch(`${SUPABASE_URL}/rest/v1/recommendations?id=eq.${id}`, {
+    method: 'PATCH', headers,
+    body: JSON.stringify({ status: 'rejected', dirk_note: reason || null, resolved_at: new Date().toISOString() })
+  });
+  await loadRecommendations();
+}
+
+async function modifyRec(id) {
+  const note = prompt('What should change?');
+  if (!note) return;
+  // Mark as modified and create a task with the modification
+  await fetch(`${SUPABASE_URL}/rest/v1/recommendations?id=eq.${id}`, {
+    method: 'PATCH', headers,
+    body: JSON.stringify({ status: 'modified', dirk_note: note, resolved_at: new Date().toISOString() })
+  });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/recommendations?id=eq.${id}`, { headers });
+  const recs = await res.json();
+  if (recs.length > 0) {
+    const rec = recs[0];
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_tasks`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        source: 'dirk', target: 'claude_code',
+        task: `[MODIFIED] ${rec.message}: ${rec.recommendation_text} — DIRK SAYS: ${note}`,
+        priority: rec.priority || 'normal', status: 'pending'
+      })
+    });
+  }
+  await loadRecommendations();
+  await loadTasks();
+}
+
 function refreshAll() {
   loadNotifications();
+  loadRecommendations();
   loadTasks();
 }
 
