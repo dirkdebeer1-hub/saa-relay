@@ -26,3 +26,6 @@
 | 16 | 01:40 | Claude Code | Added debug bar, confirmed polling works (prev=8, now=9 triggers alert). Added Web Audio API 3-beep sound. |
 | 17 | 01:45 | Dirk | Confirmed: banner ✓, vibration ✓, sound ✓. All three alert channels working. |
 | 18 | 01:50 | Claude Code | Cleanup: removed debug bar, deleted test notifications, pushed final v4. |
+| 19 | 01:55 | Dirk | Notifications only needed for: session end, needs input, needs attention, relay from claude.ai. No routine notifications. |
+| 20 | 02:00 | Dirk | Convert to installable PWA + service worker for background notifications + softer chime sound. |
+| 21 | 02:05 | Claude Code | PWA complete: manifest.json, sw.js with caching + push + notification click handler, gentle C5→E5 chime, installable on Android home screen. |
