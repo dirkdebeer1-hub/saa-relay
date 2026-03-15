@@ -498,7 +498,8 @@ let soundEnabled = false;
 
 function enableSound() {
   try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     // Play a short test tone to confirm it works
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -509,13 +510,7 @@ function enableSound() {
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.3);
-    soundEnabled = true;
-    const bar = document.getElementById('sound-bar');
-    const btn = document.getElementById('sound-btn');
-    bar.style.background = 'var(--green)';
-    bar.onclick = null;
-    bar.style.cursor = 'default';
-    btn.textContent = '🔔 Sound ON — alerts will play automatically';
+    setSoundOn();
     if (navigator.vibrate) navigator.vibrate(100);
   } catch(e) {
     console.error('Audio init failed:', e);
@@ -525,6 +520,38 @@ function enableSound() {
     btn.textContent = '🔇 Sound not available on this device';
   }
 }
+
+function setSoundOn() {
+  soundEnabled = true;
+  localStorage.setItem('saa_sound_enabled', 'true');
+  const bar = document.getElementById('sound-bar');
+  const btn = document.getElementById('sound-btn');
+  bar.style.background = 'var(--green)';
+  bar.onclick = null;
+  bar.style.cursor = 'default';
+  btn.textContent = '🔔 Sound ON — alerts will play automatically';
+}
+
+// Restore sound preference from localStorage
+if (localStorage.getItem('saa_sound_enabled') === 'true') {
+  soundEnabled = true;
+  // UI update after DOM ready (inline script runs after elements above)
+  const bar = document.getElementById('sound-bar');
+  const btn = document.getElementById('sound-btn');
+  if (bar && btn) {
+    bar.style.background = 'var(--green)';
+    bar.onclick = null;
+    bar.style.cursor = 'default';
+    btn.textContent = '🔔 Sound ON — alerts will play automatically';
+  }
+}
+
+// Unlock AudioContext on first user interaction (any click/tap on page)
+document.addEventListener('click', function unlockAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  document.removeEventListener('click', unlockAudio);
+}, { once: true });
 
 function playAlert() {
   if (!soundEnabled || !audioCtx) return;
