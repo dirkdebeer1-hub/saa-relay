@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1F4E79">
+<title>SAA Command</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --navy: #1F4E79; --dark: #163A5C; --warm: #2C3E50; --muted: #4A6580; --bg: #f5f7fa; --card: #fff; --red: #e74c3c; --green: #27ae60; --orange: #f39c12; --blue: #3498db; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: #333; min-height: 100vh; padding-bottom: 80px; }
+.header { background: linear-gradient(135deg, var(--navy), var(--dark)); color: white; padding: 16px 20px; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header .sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+.status-bar { display: flex; gap: 12px; margin-top: 8px; }
+.status-pill { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(255,255,255,0.15); }
+.status-pill.alert { background: var(--red); }
+.tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; position: sticky; top: 72px; z-index: 99; }
+.tab { flex: 1; padding: 12px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; color: var(--muted); transition: all 0.2s; }
+.tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+.tab .badge { display: inline-block; background: var(--red); color: white; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 4px; min-width: 18px; }
+.content { padding: 12px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
+.card { background: var(--card); border-radius: 10px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid var(--navy); }
+.card.needs-input { border-left-color: var(--red); }
+.card.waiting { border-left-color: var(--orange); }
+.card.complete { border-left-color: var(--green); opacity: 0.7; }
+.card .type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.card .type.red { color: var(--red); }
+.card .type.orange { color: var(--orange); }
+.card .type.green { color: var(--green); }
+.card .type.blue { color: var(--blue); }
+.card .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.card .body { font-size: 13px; color: #555; line-height: 1.4; }
+.card .time { font-size: 11px; color: #999; margin-top: 6px; }
+.card .actions { display: flex; gap: 8px; margin-top: 10px; }
+.card .actions button { padding: 6px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-primary { background: var(--navy); color: white; }
+.btn-secondary { background: #e8ecf0; color: var(--dark); }
+.btn-danger { background: var(--red); color: white; }
+.task-input-area { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 12px 16px; border-top: 1px solid #e0e0e0; display: flex; gap: 8px; z-index: 100; }
+.task-input-area input { flex: 1; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; }
+.task-input-area input:focus { border-color: var(--navy); }
+.task-input-area button { padding: 10px 20px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.task-input-area button:disabled { opacity: 0.5; }
+.empty { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+.panel { display: none; }
+.panel.active { display: block; }
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.quick-btn { padding: 14px 12px; background: white; border: 2px solid #e8ecf0; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.quick-btn:active { background: var(--bg); border-color: var(--navy); }
+.quick-btn .icon { font-size: 24px; margin-bottom: 4px; }
+.quick-btn .label { font-size: 12px; font-weight: 600; color: var(--dark); }
+.refresh-btn { position: absolute; right: 16px; top: 16px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.loading { text-align: center; padding: 20px; color: #999; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+  <h1>SAA Command</h1>
+  <div class="sub">SA Accountants — CEO Dashboard</div>
+  <div class="status-bar">
+    <span class="status-pill" id="pill-notifications">0 alerts</span>
+    <span class="status-pill" id="pill-tasks">0 pending</span>
+    <span class="status-pill" id="pill-connected">connecting...</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-panel="notifications" onclick="switchTab(this)">Alerts <span class="badge" id="badge-notif" style="display:none">0</span></div>
+  <div class="tab" data-panel="tasks" onclick="switchTab(this)">Tasks <span class="badge" id="badge-tasks" style="display:none">0</span></div>
+  <div class="tab" data-panel="command" onclick="switchTab(this)">Command</div>
+</div>
+
+<!-- NOTIFICATIONS PANEL -->
+<div class="panel active" id="panel-notifications">
+  <div class="content">
+    <div class="section-title">Needs Your Input</div>
+    <div id="notif-needs-input"><div class="loading">Loading...</div></div>
+    <div class="section-title">Recent</div>
+    <div id="notif-recent"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- TASKS PANEL -->
+<div class="panel" id="panel-tasks">
+  <div class="content">
+    <div class="section-title">Active Tasks</div>
+    <div id="tasks-active"><div class="loading">Loading...</div></div>
+    <div class="section-title">Completed</div>
+    <div id="tasks-completed"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- COMMAND PANEL -->
+<div class="panel" id="panel-command">
+  <div class="content">
+    <div class="section-title">Quick Actions</div>
+    <div class="quick-actions">
+      <div class="quick-btn" onclick="sendQuickTask('Process March 2026 payroll for all clients')">
+        <div class="icon">💰</div>
+        <div class="label">Process Payroll</div>
+      </div>
+      <div class="quick-btn" onclick="sendQuickTask('Check email and process new client emails')">
+        <div class="icon">📧</div>
+        <div class="label">Check Email</div>
+      </div>
+      <div class="quick-btn" onclick="sendQuickTask('Show practice dashboard with all deadlines')">
+        <div class="icon">📊</div>
+        <div class="label">Dashboard</div>
+      </div>
+      <div class="quick-btn" onclick="sendQuickTask('Draft deadline emails for clients with upcoming obligations')">
+        <div class="icon">⏰</div>
+        <div class="label">Deadline Emails</div>
+      </div>
+      <div class="quick-btn" onclick="sendQuickTask('Run EMP501 reconciliation for all payroll clients')">
+        <div class="icon">📋</div>
+        <div class="label">EMP501</div>
+      </div>
+      <div class="quick-btn" onclick="sendQuickTask('Update ARCHITECT-INBOX.md and push to saa-relay')">
+        <div class="icon">🔄</div>
+        <div class="label">Sync Relay</div>
+      </div>
+    </div>
+    <div class="section-title">Custom Task</div>
+    <p style="font-size:13px;color:#777;margin-bottom:12px;">Type any instruction — it goes straight to Claude Code.</p>
+  </div>
+</div>
+
+<!-- FIXED INPUT BAR -->
+<div class="task-input-area">
+  <input type="text" id="taskInput" placeholder="Tell Claude what to do..." onkeydown="if(event.key==='Enter')sendTask()">
+  <button onclick="sendTask()" id="sendBtn">Send</button>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ofeeugovkunenbiigozr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mZWV1Z292a3VuZW5iaWlnb3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MTQxOTcsImV4cCI6MjA4NTA5MDE5N30.ZmQ_W453mcVoUp-6oe9wvPn-uXj8TNL5GJ4lX11GXfM';
+
+const headers = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + el.dataset.panel).classList.add('active');
+}
+
+function timeAgo(dateStr) {
+  const now = new Date();
+  const d = new Date(dateStr);
+  const mins = Math.floor((now - d) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+function renderCard(item, type) {
+  const typeClass = item.type === 'needs_input' ? 'red' :
+                    item.type === 'waiting' ? 'orange' :
+                    item.type === 'task_complete' ? 'green' : 'blue';
+  const cardClass = item.type === 'needs_input' ? 'needs-input' :
+                    item.type === 'waiting' ? 'waiting' :
+                    item.type === 'task_complete' ? 'complete' : '';
+  const typeLabel = item.type === 'needs_input' ? 'NEEDS INPUT' :
+                    item.type === 'waiting' ? 'WAITING' :
+                    item.type === 'task_complete' ? 'COMPLETE' :
+                    (item.type || 'INFO').toUpperCase();
+
+  return `<div class="card ${cardClass}">
+    <div class="type ${typeClass}">${typeLabel}</div>
+    <div class="title">${item.title || 'Notification'}</div>
+    <div class="body">${item.message || ''}</div>
+    <div class="time">${timeAgo(item.created_at)}</div>
+    ${item.type === 'needs_input' && !item.is_read ? `
+      <div class="actions">
+        <button class="btn-primary" onclick="replyToNotif('${item.id}')">Reply</button>
+        <button class="btn-secondary" onclick="dismissNotif('${item.id}')">Dismiss</button>
+      </div>` : ''}
+  </div>`;
+}
+
+function renderTaskCard(task) {
+  const statusClass = task.status === 'pending' ? 'needs-input' :
+                      task.status === 'in_progress' ? 'waiting' :
+                      task.status === 'completed' ? 'complete' : '';
+  const typeClass = task.status === 'pending' ? 'orange' :
+                    task.status === 'in_progress' ? 'blue' :
+                    task.status === 'completed' ? 'green' : 'blue';
+
+  return `<div class="card ${statusClass}">
+    <div class="type ${typeClass}">${(task.status || 'pending').toUpperCase()} → ${task.target || 'claude_code'}</div>
+    <div class="title">${task.task}</div>
+    ${task.result ? `<div class="body">${task.result}</div>` : ''}
+    <div class="time">Sent ${timeAgo(task.created_at)}${task.completed_at ? ' · Done ' + timeAgo(task.completed_at) : ''}</div>
+    ${task.status === 'pending' ? `
+      <div class="actions">
+        <button class="btn-danger" onclick="cancelTask('${task.id}')">Cancel</button>
+      </div>` : ''}
+  </div>`;
+}
+
+async function loadNotifications() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/notifications?order=created_at.desc&limit=20`, { headers });
+    const data = await res.json();
+
+    const needsInput = data.filter(n => n.type === 'needs_input' && !n.is_dismissed);
+    const recent = data.filter(n => n.type !== 'needs_input' || n.is_dismissed);
+
+    document.getElementById('notif-needs-input').innerHTML =
+      needsInput.length ? needsInput.map(n => renderCard(n)).join('') :
+      '<div class="empty">No items need your input right now.</div>';
+
+    document.getElementById('notif-recent').innerHTML =
+      recent.length ? recent.slice(0, 10).map(n => renderCard(n)).join('') :
+      '<div class="empty">No recent notifications.</div>';
+
+    const unread = data.filter(n => !n.is_read && n.type === 'needs_input').length;
+    const badge = document.getElementById('badge-notif');
+    if (unread > 0) { badge.textContent = unread; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+
+    document.getElementById('pill-notifications').textContent = unread > 0 ? unread + ' alerts' : 'no alerts';
+    if (unread > 0) document.getElementById('pill-notifications').classList.add('alert');
+    else document.getElementById('pill-notifications').classList.remove('alert');
+
+    document.getElementById('pill-connected').textContent = 'connected';
+    document.getElementById('pill-connected').style.background = 'rgba(39,174,96,0.4)';
+  } catch (e) {
+    document.getElementById('pill-connected').textContent = 'offline';
+    document.getElementById('pill-connected').style.background = 'rgba(231,76,60,0.4)';
+    console.error('Failed to load notifications:', e);
+  }
+}
+
+async function loadTasks() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/agent_tasks?order=created_at.desc&limit=20`, { headers });
+    const data = await res.json();
+
+    const active = data.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+    const completed = data.filter(t => t.status === 'completed');
+
+    document.getElementById('tasks-active').innerHTML =
+      active.length ? active.map(t => renderTaskCard(t)).join('') :
+      '<div class="empty">No active tasks.</div>';
+
+    document.getElementById('tasks-completed').innerHTML =
+      completed.length ? completed.slice(0, 5).map(t => renderTaskCard(t)).join('') :
+      '<div class="empty">No completed tasks yet.</div>';
+
+    const pending = active.length;
+    const badge = document.getElementById('badge-tasks');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+
+    document.getElementById('pill-tasks').textContent = pending + ' pending';
+  } catch (e) {
+    console.error('Failed to load tasks:', e);
+  }
+}
+
+async function sendTask() {
+  const input = document.getElementById('taskInput');
+  const task = input.value.trim();
+  if (!task) return;
+
+  document.getElementById('sendBtn').disabled = true;
+
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_tasks`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ source: 'dirk', target: 'claude_code', task, priority: 'normal', status: 'pending' })
+    });
+    input.value = '';
+    await loadTasks();
+    switchTab(document.querySelector('[data-panel="tasks"]'));
+  } catch (e) {
+    alert('Failed to send task: ' + e.message);
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function sendQuickTask(task) {
+  document.getElementById('taskInput').value = task;
+  sendTask();
+}
+
+async function dismissNotif(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/notifications?id=eq.${id}`, {
+    method: 'PATCH', headers, body: JSON.stringify({ is_dismissed: true, is_read: true })
+  });
+  await loadNotifications();
+}
+
+async function replyToNotif(id) {
+  const reply = prompt('Your reply:');
+  if (!reply) return;
+  // Send as a task referencing the notification
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_tasks`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ source: 'dirk', target: 'claude_code', task: reply, priority: 'normal', status: 'pending',
+      result: 'Reply to notification ' + id })
+  });
+  await dismissNotif(id);
+  await loadTasks();
+}
+
+async function cancelTask(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_tasks?id=eq.${id}`, {
+    method: 'PATCH', headers, body: JSON.stringify({ status: 'cancelled' })
+  });
+  await loadTasks();
+}
+
+function refreshAll() {
+  loadNotifications();
+  loadTasks();
+}
+
+// Initial load
+refreshAll();
+
+// Auto-refresh every 30 seconds
+setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>
